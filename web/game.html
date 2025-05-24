@@ -91,99 +91,153 @@ a {
 </head>
 <body>
     <a href="index.html">Home</a>
-  <h1>🧱 Avoid the Falling Blocks</h1>
-  <div id="score">Score: 0</div>
-  <div id="highscore">High Score: 0</div>
-  <button onclick="startGame()">Start Game</button>
-  <div id="game">
-    <div id="player"></div>
-  </div>
+    <a href="games.html">Back To Games</a>
+  
 
-  <script>
-    const game = document.getElementById("game");
-    const player = document.getElementById("player");
-    const scoreDisplay = document.getElementById("score");
-    const highscoreDisplay = document.getElementById("highscore");
-    let score = 0;
-    let highScore = localStorage.getItem("highscore") || 0;
-    highscoreDisplay.textContent = "High Score: " + highScore;
-    let gameInterval;
-    let blockInterval;
-    let isGameOver = false;
 
-    document.addEventListener("keydown", (e) => {
-      if (isGameOver) return;
-      const left = parseInt(window.getComputedStyle(player).getPropertyValue("left"));
-      if (e.key === "ArrowLeft" && left > 0) {
-        player.style.left = left - 40 + "px";
-      } else if (e.key === "ArrowRight" && left < 260) {
-        player.style.left = left + 40 + "px";
+
+
+    <canvas id="gameCanvas" width="400" height="600" style="border:1px solid #000;"></canvas>
+<button id="restartBtn" style="display:none; margin-top: 10px;">Restart</button>
+<script>
+  // Reset high score once
+  localStorage.removeItem("highScore");
+
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+  const restartBtn = document.getElementById("restartBtn");
+
+  const player = {
+    x: 175,
+    y: 550,
+    width: 50,
+    height: 50,
+    speed: 5
+  };
+
+  let blocks = [];
+  let blockSpeed = 3;
+  let score = 0;
+  let highScore = localStorage.getItem("highScore") || 0;
+  let keys = { left: false, right: false };
+  let isGameOver = false;
+  let frameCounter = 0;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") keys.left = true;
+    if (e.key === "ArrowRight") keys.right = true;
+  });
+
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft") keys.left = false;
+    if (e.key === "ArrowRight") keys.right = false;
+  });
+
+  restartBtn.addEventListener("click", () => {
+    score = 0;
+    blocks = [];
+    player.x = 175;
+    isGameOver = false;
+    blockSpeed = 3;
+    frameCounter = 0;
+    restartBtn.style.display = "none";
+    gameLoop();
+  });
+
+  function spawnBlock() {
+    const blockWidth = 50;
+    const x = Math.random() * (canvas.width - blockWidth);
+    blocks.push({
+      x: x,
+      y: -50,
+      width: blockWidth,
+      height: 50,
+      speed: blockSpeed
+    });
+  }
+
+  function drawPlayer() {
+    ctx.fillStyle = "blue";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+  }
+
+  function drawBlocks() {
+    ctx.fillStyle = "red";
+    for (let block of blocks) {
+      ctx.fillRect(block.x, block.y, block.width, block.height);
+    }
+  }
+
+  function update() {
+    if (keys.left) player.x -= player.speed;
+    if (keys.right) player.x += player.speed;
+
+    // Keep player in bounds
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+    for (let block of blocks) {
+      block.y += block.speed;
+    }
+
+    blocks = blocks.filter(block => {
+      if (
+        block.y + block.height > player.y &&
+        block.y < player.y + player.height &&
+        block.x + block.width > player.x &&
+        block.x < player.x + player.width
+      ) {
+        endGame();
       }
+      return block.y < canvas.height;
     });
 
-    function startGame() {
-      game.innerHTML = "";
-      game.appendChild(player);
-      player.style.left = "130px";
-      isGameOver = false;
-      score = 0;
-      scoreDisplay.textContent = "Score: 0";
+    frameCounter++;
+    if (frameCounter % 10 === 0) score++;
 
-      gameInterval = setInterval(() => {
-        score++;
-        scoreDisplay.textContent = "Score: " + score;
-      }, 500);
-
-      blockInterval = setInterval(() => {
-        const block = document.createElement("div");
-        block.classList.add("block");
-        block.style.left = Math.floor(Math.random() * 7) * 40 + "px";
-        game.appendChild(block);
-
-        let fall = setInterval(() => {
-          if (isGameOver) {
-            clearInterval(fall);
-            return;
-          }
-
-          const top = parseInt(window.getComputedStyle(block).getPropertyValue("top"));
-          if (top >= 460) {
-            block.remove();
-            clearInterval(fall);
-            return;
-          } else {
-            block.style.top = top + 10 + "px";
-          }
-
-          const blockRect = block.getBoundingClientRect();
-          const playerRect = player.getBoundingClientRect();
-
-          if (
-            blockRect.bottom > playerRect.top &&
-            blockRect.top < playerRect.bottom &&
-            blockRect.right > playerRect.left &&
-            blockRect.left < playerRect.right
-          ) {
-            gameOver();
-            clearInterval(fall);
-          }
-        }, 50);
-      }, 800);
+    // Increase difficulty every 5 seconds
+    if (frameCounter % (60 * 5) === 0) {
+      blockSpeed += 2.5;
     }
+  }
 
-    function gameOver() {
-      clearInterval(gameInterval);
-      clearInterval(blockInterval);
-      isGameOver = true;
+  function drawScore() {
+    ctx.fillStyle = "black";
+    ctx.font = "16px Arial";
+    ctx.fillText("Score: " + score, 10, 20);
+    ctx.fillText("High Score: " + highScore, 10, 40);
+  }
 
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem("highscore", highScore);
-        highscoreDisplay.textContent = "High Score: " + highScore;
-      }
-
-      alert("💥 Game Over! Final Score: " + score);
+  function endGame() {
+    isGameOver = true;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("highScore", highScore);
     }
-  </script>
-</body>
-</html>
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.fillText("Game Over!", 130, 250);
+    ctx.font = "16px Arial";
+    ctx.fillText("Score: " + score, 150, 280);
+    ctx.fillText("High Score: " + highScore, 130, 310);
+    restartBtn.style.display = "block";
+  }
+
+  function gameLoop() {
+    if (isGameOver) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    update();
+    drawPlayer();
+    drawBlocks();
+    drawScore();
+    requestAnimationFrame(gameLoop);
+  }
+
+  setInterval(() => {
+    if (!isGameOver) spawnBlock();
+  }, 1000);
+
+  gameLoop();
+</script>
