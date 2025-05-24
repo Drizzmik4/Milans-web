@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Avoid the Blocks</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: white;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    #game {
+      position: relative;
+      margin: 20px auto;
+      width: 300px;
+      height: 500px;
+      background: #222;
+      overflow: hidden;
+      border: 3px solid #555;
+    }
+
+    #player {
+      width: 40px;
+      height: 40px;
+      background: #4caf50;
+      position: absolute;
+      bottom: 10px;
+      left: 130px;
+    }
+
+    .block {
+      width: 40px;
+      height: 40px;
+      background: crimson;
+      position: absolute;
+      top: 0;
+    }
+
+    #score, #highscore {
+      font-size: 1.2em;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+
+    
+
+a {
+            background-color: #1e1e1e;
+            color: #00ffcc;
+            text-decoration: none;
+            padding: 15px 25px;
+            border: 1px solid #00ffcc;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            display: inline-block;
+            box-shadow: 0 4px 10px rgba(0, 255, 204, 0.2);
+        }
+
+
+        body {
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    </style>
+  </style>
+</head>
+<body>
+    <a href="index.html">Home</a>
+  <h1>🧱 Avoid the Falling Blocks</h1>
+  <div id="score">Score: 0</div>
+  <div id="highscore">High Score: 0</div>
+  <button onclick="startGame()">Start Game</button>
+  <div id="game">
+    <div id="player"></div>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const player = document.getElementById("player");
+    const scoreDisplay = document.getElementById("score");
+    const highscoreDisplay = document.getElementById("highscore");
+    let score = 0;
+    let highScore = localStorage.getItem("highscore") || 0;
+    highscoreDisplay.textContent = "High Score: " + highScore;
+    let gameInterval;
+    let blockInterval;
+    let isGameOver = false;
+
+    document.addEventListener("keydown", (e) => {
+      if (isGameOver) return;
+      const left = parseInt(window.getComputedStyle(player).getPropertyValue("left"));
+      if (e.key === "ArrowLeft" && left > 0) {
+        player.style.left = left - 40 + "px";
+      } else if (e.key === "ArrowRight" && left < 260) {
+        player.style.left = left + 40 + "px";
+      }
+    });
+
+    function startGame() {
+      game.innerHTML = "";
+      game.appendChild(player);
+      player.style.left = "130px";
+      isGameOver = false;
+      score = 0;
+      scoreDisplay.textContent = "Score: 0";
+
+      gameInterval = setInterval(() => {
+        score++;
+        scoreDisplay.textContent = "Score: " + score;
+      }, 500);
+
+      blockInterval = setInterval(() => {
+        const block = document.createElement("div");
+        block.classList.add("block");
+        block.style.left = Math.floor(Math.random() * 7) * 40 + "px";
+        game.appendChild(block);
+
+        let fall = setInterval(() => {
+          if (isGameOver) {
+            clearInterval(fall);
+            return;
+          }
+
+          const top = parseInt(window.getComputedStyle(block).getPropertyValue("top"));
+          if (top >= 460) {
+            block.remove();
+            clearInterval(fall);
+            return;
+          } else {
+            block.style.top = top + 10 + "px";
+          }
+
+          const blockRect = block.getBoundingClientRect();
+          const playerRect = player.getBoundingClientRect();
+
+          if (
+            blockRect.bottom > playerRect.top &&
+            blockRect.top < playerRect.bottom &&
+            blockRect.right > playerRect.left &&
+            blockRect.left < playerRect.right
+          ) {
+            gameOver();
+            clearInterval(fall);
+          }
+        }, 50);
+      }, 800);
+    }
+
+    function gameOver() {
+      clearInterval(gameInterval);
+      clearInterval(blockInterval);
+      isGameOver = true;
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highscore", highScore);
+        highscoreDisplay.textContent = "High Score: " + highScore;
+      }
+
+      alert("💥 Game Over! Final Score: " + score);
+    }
+  </script>
+</body>
+</html>
